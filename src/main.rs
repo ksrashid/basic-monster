@@ -36,7 +36,7 @@ fn setup(mut commands: Commands) {
 
 
 
-fn move_to_target(time: Res<Time>, mut query_player: Query<(&mut Transform, &Player)>) {
+fn move_to_target(time: Res<Time>, mut query_player: Query<(&mut Transform, &Player), With<IsSelected>>) {
     for (mut transform, player) in query_player.iter_mut() {
         let direction = player.target_position - transform.translation.xy();
         let distance = direction.length();
@@ -48,11 +48,15 @@ fn move_to_target(time: Res<Time>, mut query_player: Query<(&mut Transform, &Pla
     }
 }
 
+
 fn handle_mouse(
     mouse_button: Res<ButtonInput<MouseButton>>,
     window: Single<&Window>,
     query_camera: Single<(&Camera, &GlobalTransform)>,
-    mut query_player: Query<&mut Player>,
+    mut query_player_mut: Query<&mut Player>,
+    mut commands: Commands,
+    query_player: Query<(Entity, &Transform), With<Player>>,
+    query_selected: Query<Entity, With<IsSelected>>,
 ) {
     if mouse_button.just_pressed(MouseButton::Left) {
         let (camera, camera_transform) = query_camera.into_inner();
@@ -60,8 +64,32 @@ fn handle_mouse(
             match camera.viewport_to_world(camera_transform, cursor_pos) {
                 Ok(world_pos) => {
                     let world_pos = world_pos.origin.truncate();
-                    for mut player in query_player.iter_mut() {
-                        player.target_position = world_pos;
+                    let grid_sz = 50.0;
+                                        
+
+                    let mut chosen_player = false;
+                    
+                    for (entity, transform) in query_player.iter() {
+                        let distance = world_pos.distance(transform.translation.truncate());
+
+
+                        if distance <= selection_radius {
+                            if query_selected.contains(entity) {
+                                commands.entity(entity).remove::<IsSelected>();
+                            } else {
+                                commands.entity(entity).insert(IsSelected);
+                            }
+                            chosen_player = true;
+                            break;
+                        }
+                    }
+                    
+                    if !chosen_player {
+                        for entity in query_selected.iter() {
+                            if let Ok(mut player) = query_player_mut.get_mut(entity) {
+                                player.target_position = world_pos;
+                            }
+                        }
                     }
                 }
                 Err(error) => {
