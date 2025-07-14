@@ -4,3 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+bevy = "0.16.1"
+
+
+
+[features]
+default = ["debug"]
+debug = [
+  "bevy/debug_glam_assert",
+  "bevy/file_watcher",
+  "bevy/dynamic_linking",
+  "bevy/bevy_dev_tools"
+]
